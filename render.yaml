@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: digisac-boleto-flow
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20.0.0
+      - key: API_KEY
+        sync: false # Você deve definir manualmente no painel do Render
+      - key: PORT
+        value: 8080

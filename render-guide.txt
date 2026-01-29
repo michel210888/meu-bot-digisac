@@ -1,0 +1,15 @@
+COMO SUBIR NO RENDER.COM:
+
+1. Crie um repositório no GitHub e suba todos os arquivos deste projeto.
+2. No painel do Render (dashboard.render.com), clique em "New" > "Web Service".
+3. Conecte seu repositório do GitHub.
+4. Configure os seguintes campos:
+   - Name: digisac-boleto-flow
+   - Runtime: Node
+   - Build Command: npm install && npm run build
+   - Start Command: node server.js
+5. IMPORTANTE: Vá na aba "Environment" e adicione a variável:
+   - API_KEY = (Sua chave do Google AI Studio / Gemini)
+6. Clique em "Create Web Service".
+
+O Render detectará automaticamente o package.json, compilará o React para a pasta /dist e o server.js servirá tudo com o proxy funcionando para evitar erros de CORS na DigiSac e Omie.

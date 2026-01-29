@@ -1,0 +1,7 @@
+{
+  "name": "DigiSac Boleto Flow",
+  "description": "Uma plataforma inteligente para gerenciar e automatizar o envio de boletos de contas a receber via DigiSac, utilizando IA para extração de dados e personalização de mensagens.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

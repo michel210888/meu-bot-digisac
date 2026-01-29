@@ -1,0 +1,16 @@
+COMO RODAR 100% ONLINE (Sem instalar nada):
+
+1. Agora que o arquivo Dockerfile foi criado com conteúdo, o erro de "empty Dockerfile" será resolvido.
+2. Certifique-se de que todos os arquivos (incluindo o novo Dockerfile) estão salvos.
+3. Se estiver usando o terminal do Fly no navegador:
+   - Execute: fly deploy
+4. Se o comando falhar por falta de permissão na imagem, o Fly.io cuidará do build remoto automaticamente.
+
+IMPORTANTE:
+Para a IA do Gemini (extração de boletos por foto) funcionar no servidor, você PRECISA definir a chave API no painel do Fly.io:
+1. No painel do Fly.io, vá em "Secrets".
+2. Adicione uma secret chamada: API_KEY
+3. O valor deve ser a sua chave do Google AI Studio.
+
+Ou via comando:
+fly secrets set API_KEY=sua_chave_aqui
