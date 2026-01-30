@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Boleto, DigiSacConfig, OmieConfig } from './types';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
-import BoletoManager from './components/BoletoManager';
+import BoletoManager from './components/boletomanager';
 import Settings from './components/Settings';
 
 const DEFAULT_CONFIG: DigiSacConfig = {
