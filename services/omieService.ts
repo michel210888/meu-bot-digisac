@@ -9,7 +9,6 @@ const callOmie = async (endpoint: string, call: string, config: OmieConfig, para
     param: [param]
   };
 
-  // Usamos o proxy interno do nosso próprio servidor
   const url = `${window.location.origin}/proxy/omie${endpoint}`;
 
   try {
@@ -74,15 +73,15 @@ export const fetchOmieContasReceber = async (config: OmieConfig): Promise<Boleto
         codigo_cliente_omie: item.codigo_cliente_fornecedor
       });
 
-      const ddd = (clienteData.telefone1_ddd || clienteData.celular_ddd || "").replace(/\D/g, '');
-      const num = (clienteData.telefone1_numero || clienteData.celular_numero || "").replace(/\D/g, '');
+      const ddd = String(clienteData.telefone1_ddd || clienteData.celular_ddd || "").replace(/\D/g, '');
+      const num = String(clienteData.telefone1_numero || clienteData.celular_numero || "").replace(/\D/g, '');
       let phone = (ddd && num) ? `55${ddd}${num}` : "";
 
       boletosParaProcessar.push({
         id: `omie-${item.codigo_lancamento}`,
-        customerName: item.nome_cliente || clienteData.nome_fantasia || "Cliente sem nome",
+        customerName: item.nome_cliente || clienteData.nome_fantasia || "Cliente",
         phone: phone,
-        amount: item.valor_liquido,
+        amount: Number(item.valor_liquido) || 0,
         dueDate: item.data_vencimento,
         boletoUrl: hasBoleto ? item.boletos[0].cLinkBoleto : "",
         barcode: hasBoleto ? item.boletos[0].cCodBarra : "",
