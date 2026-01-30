@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Boleto } from "../types";
 
@@ -8,9 +7,9 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 export const extractBoletoFromImage = async (base64Image: string, mimeType: string): Promise<Boleto | null> => {
   const prompt = "Analise este boleto bancário e extraia: Nome do pagador/cliente, Valor total, Data de vencimento e o Código de barras (linha digitável). Retorne estritamente em JSON.";
   
-  // Structured contents with parts for image and text input
+  // Using gemini-3-pro-preview for complex reasoning task of financial document extraction
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-3-pro-preview',
     contents: {
       parts: [
         { inlineData: { data: base64Image, mimeType } },
