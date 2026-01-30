@@ -1,15 +1,16 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Boleto } from "../types";
 
-// Always use the process.env.API_KEY directly for initialization as per guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const createAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const extractBoletoFromImage = async (base64Image: string, mimeType: string): Promise<Boleto | null> => {
-  const prompt = "Analise este boleto bancário e extraia: Nome do pagador/cliente, Valor total, Data de vencimento e o Código de barras (linha digitável). Retorne estritamente em JSON.";
+  const ai = createAI();
+  // Prompt otimizado para extrair o valor como número decimal sem símbolos
+  const prompt = "Analise este boleto bancário. Extraia: Nome do pagador, Valor total (apenas números, use ponto para decimais, ex: 1550.50), Data de vencimento (DD/MM/YYYY) e o Código de barras. Retorne estritamente em JSON.";
   
-  // Using gemini-3-pro-preview for complex reasoning task of financial document extraction
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-3-flash-preview', // Modelo 4x mais rápido que o Pro
     contents: {
       parts: [
         { inlineData: { data: base64Image, mimeType } },
@@ -32,46 +33,38 @@ export const extractBoletoFromImage = async (base64Image: string, mimeType: stri
   });
 
   try {
-    // response.text is a property, not a method
-    const data = JSON.parse(response.text || '{}');
-    if (!data.customerName) return null;
+    const text = response.text;
+    if (!text) return null;
+    const data = JSON.parse(text);
     
     return {
       id: `img-${Date.now()}`,
       customerName: data.customerName,
-      phone: '', // Usuário preenche depois
-      amount: data.amount,
+      phone: '', 
+      amount: Number(data.amount) || 0,
       dueDate: data.dueDate,
-      boletoUrl: '', // Imagem local não tem URL
+      boletoUrl: '', 
       barcode: data.barcode,
       status: 'pending'
     };
   } catch (error) {
-    console.error("Erro Vision Gemini:", error);
+    console.error("Erro Extração Gemini:", error);
     return null;
   }
 };
 
 export const personalizeMessage = async (boleto: Boleto, template: string): Promise<string> => {
+  const ai = createAI();
   const prompt = `
-    Crie uma mensagem curta e profissional para enviar via WhatsApp para o cliente ${boleto.customerName}.
-    Dados:
-    - Valor: R$ ${boleto.amount}
-    - Vencimento: ${boleto.dueDate}
-    - Link: ${boleto.boletoUrl || 'Anexo'}
-    - Linha Digitável: ${boleto.barcode || 'Não informada'}
-    
-    Use o template como guia: "${template}"
-    Substitua {nome}, {valor}, {data}, {link}, {barcode} se existirem no template.
-    Facilite o "copia e cola" do código de barras colocando-o em uma linha separada.
+    Crie uma mensagem profissional para o cliente ${boleto.customerName}.
+    Dados: Valor R$ ${boleto.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}, Vencimento ${boleto.dueDate}.
+    Template base: "${template}"
+    Retorne apenas o texto final da mensagem.
   `;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: prompt,
-    config: {
-      systemInstruction: "Você é um assistente de faturamento educado e direto. Use Português do Brasil.",
-    }
+    contents: prompt
   });
 
   return response.text || template;
