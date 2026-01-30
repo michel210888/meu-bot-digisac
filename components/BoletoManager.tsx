@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useMemo } from 'react';
 import { Boleto, DigiSacConfig, OmieConfig } from '../types';
 import { extractBoletoFromImage, personalizeMessage } from '../services/geminiService';
@@ -111,9 +112,9 @@ const BoletoManager: React.FC<BoletoManagerProps> = ({ config, omieConfig, bolet
   };
 
   const handleClearAll = () => {
-    if (confirm("⚠️ CONFIRMAÇÃO CRÍTICA: Deseja apagar TODOS os boletos da fila? Esta ação não pode ser desfeita.")) {
+    if (confirm("⚠️ CONFIRMAÇÃO: Limpar toda a fila?")) {
       setBoletos([]);
-      addLog('info', 'Fila limpa pelo usuário.');
+      addLog('info', 'Fila limpa.');
     }
   };
 
@@ -136,15 +137,15 @@ const BoletoManager: React.FC<BoletoManagerProps> = ({ config, omieConfig, bolet
                <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 text-xl border border-indigo-500/20 group-hover:bg-indigo-500 group-hover:text-white transition-all">🏢</div>
                <div>
                   <h3 className="font-black text-white text-xs uppercase tracking-widest">Importar</h3>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase mt-0.5">Contas Omie ERP</p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mt-0.5">Omie ERP</p>
                </div>
             </div>
             <button
               onClick={handleSyncOmie}
               disabled={isSyncing}
-              className="px-6 py-3.5 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 active:scale-95 transition-all disabled:opacity-50 text-[10px] uppercase tracking-widest"
+              className="px-6 py-3.5 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-500 transition-all disabled:opacity-50 text-[10px] uppercase tracking-widest"
             >
-              {isSyncing ? 'Carregando...' : 'Sincronizar'}
+              {isSyncing ? 'Buscando...' : 'Sincronizar'}
             </button>
           </div>
 
@@ -152,19 +153,21 @@ const BoletoManager: React.FC<BoletoManagerProps> = ({ config, omieConfig, bolet
             <div className="flex flex-col items-center justify-center py-6">
               <span className="text-4xl mb-4 group-hover:scale-110 transition-transform">📄</span>
               <h3 className="font-black text-white text-xs uppercase tracking-widest">Leitura por IA</h3>
-              <p className="text-[9px] text-slate-500 font-bold uppercase mt-2">Arraste um PDF ou Imagem</p>
+              <p className="text-[9px] text-slate-500 font-bold uppercase mt-2 text-center px-4">Análise ultrarápida com Gemini Flash</p>
             </div>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*,application/pdf" onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                addLog('info', 'IA analisando boleto...');
+                addLog('info', 'Analisando boleto...');
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                   const base64 = (event.target?.result as string).split(',')[1];
                   const result = await extractBoletoFromImage(base64, file.type);
                   if (result) {
-                    addLog('success', `Extraído: ${result.customerName}`);
+                    addLog('success', `Sucesso: ${result.customerName} - R$ ${result.amount}`);
                     setBoletos(prev => [{...result, serviceId: config.accountId, userId: config.userId}, ...prev]);
+                  } else {
+                    addLog('error', 'IA falhou ao ler dados do boleto.');
                   }
                 };
                 reader.readAsDataURL(file);
@@ -176,15 +179,9 @@ const BoletoManager: React.FC<BoletoManagerProps> = ({ config, omieConfig, bolet
               <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span> Monitor em Tempo Real
             </h4>
             <div className="flex-1 overflow-y-auto font-mono text-[10px] space-y-2 custom-scrollbar pr-2">
-              {logs.length === 0 && <p className="text-slate-700 italic">Nenhum evento registrado.</p>}
               {logs.map((log, i) => (
                 <div key={i} className={`p-2 rounded-lg ${log.type === 'error' ? 'bg-rose-500/5 text-rose-400' : log.type === 'success' ? 'bg-emerald-500/5 text-emerald-400' : 'bg-slate-900/50 text-slate-400'}`}>
                   <span className="opacity-30 font-bold">[{log.time}]</span> {log.msg}
-                  {log.isCORS && (
-                    <div className="mt-2 p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-md">
-                      <p className="text-[8px] text-indigo-300 font-bold">Para resolver: Instale a extensão "Allow CORS" no seu navegador.</p>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -196,62 +193,33 @@ const BoletoManager: React.FC<BoletoManagerProps> = ({ config, omieConfig, bolet
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="font-black text-white uppercase text-sm tracking-tight">Fila de Disparo</h3>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{filteredBoletos.length} Registros na Lista</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{filteredBoletos.length} Registros</p>
               </div>
               <div className="flex gap-3">
-                <button
-                  onClick={handleClearAll}
-                  disabled={boletos.length === 0}
-                  className="px-6 py-4 border border-rose-500/30 text-rose-500 text-[10px] font-black rounded-xl hover:bg-rose-500 hover:text-white transition-all uppercase tracking-widest disabled:opacity-20 shadow-lg"
-                >
-                  Limpar Fila
-                </button>
-                <button
-                  onClick={handleSendAll}
-                  disabled={isSending || filteredBoletos.length === 0}
-                  className="px-8 py-4 bg-indigo-600 text-white text-[10px] font-black rounded-xl hover:bg-indigo-500 shadow-xl shadow-indigo-600/20 uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
-                >
-                  {isSending ? 'Enviando...' : '🚀 Iniciar Envios'}
+                <button onClick={handleClearAll} className="px-5 py-3 border border-rose-500/30 text-rose-500 text-[9px] font-black rounded-xl hover:bg-rose-500 hover:text-white uppercase tracking-widest transition-all">Limpar</button>
+                <button onClick={handleSendAll} disabled={isSending} className="px-6 py-3 bg-indigo-600 text-white text-[9px] font-black rounded-xl hover:bg-indigo-500 uppercase tracking-widest transition-all disabled:opacity-50">
+                  {isSending ? 'Processando...' : 'Iniciar Disparos'}
                 </button>
               </div>
             </div>
             
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
-                <input 
-                  type="text"
-                  placeholder="Pesquisar cliente ou vendedor..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-slate-200 outline-none focus:border-indigo-500 transition-all"
-                />
-              </div>
-               <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-                {(['all', 'pending', 'sent'] as const).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`px-6 py-2.5 text-[10px] font-black uppercase rounded-lg transition-all ${
-                      filter === f ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                  >
-                    {f === 'all' ? 'Tudo' : f === 'pending' ? 'Pendente' : 'Enviado'}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <input 
+              type="text"
+              placeholder="Pesquisar..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-5 py-3.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-slate-200 outline-none focus:border-indigo-500 transition-all"
+            />
           </div>
           
           <div className="overflow-y-auto flex-1 p-6 custom-scrollbar space-y-4">
               {filteredBoletos.map((boleto) => (
-                <div key={boleto.id} className={`p-6 rounded-2xl border transition-all ${boleto.status === 'processing' ? 'bg-indigo-500/5 border-indigo-500/40 animate-pulse' : 'bg-slate-950 border-slate-800 hover:border-slate-700 shadow-lg'}`}>
+                <div key={boleto.id} className="p-6 rounded-2xl border bg-slate-950 border-slate-800 hover:border-slate-700 shadow-lg">
                    <div className="flex justify-between items-start mb-5">
                       <div className="flex-1 min-w-0 pr-4">
                         <h4 className="font-black text-slate-100 text-sm truncate uppercase tracking-tight">{boleto.customerName}</h4>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                           <span className="text-[9px] bg-slate-800 text-slate-400 px-3 py-1 rounded-lg font-black uppercase tracking-tighter border border-slate-700">{boleto.category || 'Faturamento'}</span>
-                           <span className="text-[9px] bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg font-black uppercase tracking-tighter border border-indigo-500/20">{boleto.vendedor || 'Padrão'}</span>
+                        <div className="flex gap-2 mt-2">
+                           <span className="text-[9px] bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg font-black uppercase tracking-tighter">{boleto.vendedor || 'Geral'}</span>
                         </div>
                       </div>
                       <div className="text-right">
@@ -262,70 +230,50 @@ const BoletoManager: React.FC<BoletoManagerProps> = ({ config, omieConfig, bolet
 
                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="space-y-1">
-                        <label className="text-[8px] text-slate-500 font-black uppercase ml-1">Canal WhatsApp</label>
+                        <label className="text-[8px] text-slate-500 font-black uppercase">Canal</label>
                         <select 
                           value={boleto.serviceId || config.accountId}
                           onChange={(e) => updateBoleto(boleto.id, { serviceId: e.target.value })}
-                          className="w-full px-3 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-bold text-slate-300 outline-none focus:border-indigo-500 cursor-pointer"
+                          className="w-full px-3 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-bold text-slate-300"
                         >
-                          <option value="">Selecione o Canal</option>
+                          <option value="">Selecione...</option>
                           {config.availableServices?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[8px] text-slate-500 font-black uppercase ml-1">Atendente DigiSac</label>
+                        <label className="text-[8px] text-slate-500 font-black uppercase">Atendente</label>
                         <select 
                           value={boleto.userId || config.userId}
                           onChange={(e) => updateBoleto(boleto.id, { userId: e.target.value })}
-                          className="w-full px-3 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-bold text-slate-300 outline-none focus:border-indigo-500 cursor-pointer"
+                          className="w-full px-3 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-bold text-slate-300"
                         >
-                          <option value="">Automático (Fila)</option>
+                          <option value="">Automático</option>
                           {config.availableUsers?.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[8px] text-slate-500 font-black uppercase ml-1">WhatsApp de Envio</label>
+                        <label className="text-[8px] text-slate-500 font-black uppercase">Telefone</label>
                         <input 
                           type="tel"
                           value={boleto.phone}
                           onChange={(e) => updateBoleto(boleto.id, { phone: e.target.value.replace(/\D/g, '') })}
-                          className="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-indigo-400 outline-none focus:border-indigo-500"
+                          className="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-indigo-400 outline-none"
                         />
                       </div>
                    </div>
 
                    <div className="flex items-center justify-between pt-4 border-t border-slate-800/50">
                       <div className="flex items-center gap-3">
-                         <div className={`w-2.5 h-2.5 rounded-full ${boleto.status === 'sent' ? 'bg-emerald-500' : boleto.status === 'failed' ? 'bg-rose-500' : 'bg-indigo-500 animate-pulse'}`}></div>
-                         <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                           {boleto.status === 'sent' ? 'Enviado com Sucesso' : boleto.status === 'failed' ? 'Erro ao Processar' : 'Aguardando Disparo'}
-                         </span>
+                         <div className={`w-2.5 h-2.5 rounded-full ${boleto.status === 'sent' ? 'bg-emerald-500' : boleto.status === 'failed' ? 'bg-rose-500' : 'bg-amber-500'}`}></div>
+                         <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{boleto.status}</span>
                       </div>
-                      <div className="flex gap-3">
-                        <button onClick={() => handleDelete(boleto.id)} className="p-3 text-slate-600 hover:text-rose-500 transition-colors bg-slate-900 rounded-xl border border-transparent hover:border-rose-500/20 shadow-sm">🗑️</button>
-                        <button 
-                          onClick={() => handleSendSingle(boleto.id)}
-                          disabled={boleto.status === 'sent' || boleto.status === 'processing'}
-                          className="px-6 py-3 bg-slate-800 text-white text-[10px] font-black rounded-xl hover:bg-slate-700 transition-all disabled:opacity-20 uppercase tracking-widest border border-slate-700 shadow-lg"
-                        >
-                          {boleto.status === 'failed' ? 'Tentar Novamente' : 'Enviar Agora'}
-                        </button>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleDelete(boleto.id)} className="p-3 text-slate-600 hover:text-rose-500 transition-colors bg-slate-900 rounded-xl">🗑️</button>
+                        <button onClick={() => handleSendSingle(boleto.id)} disabled={boleto.status === 'sent'} className="px-5 py-3 bg-slate-800 text-white text-[9px] font-black rounded-xl hover:bg-slate-700 transition-all disabled:opacity-30 uppercase tracking-widest">Enviar</button>
                       </div>
                    </div>
-
-                   {boleto.error && (
-                      <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl animate-in zoom-in duration-300">
-                        <p className="text-[9px] text-rose-400 font-bold uppercase">{boleto.error}</p>
-                      </div>
-                   )}
                 </div>
               ))}
-              {filteredBoletos.length === 0 && (
-                <div className="py-40 text-center opacity-40">
-                  <span className="text-6xl block mb-6">📭</span>
-                  <p className="text-xs text-slate-500 font-black uppercase tracking-widest">A fila está vazia no momento.</p>
-                </div>
-              )}
           </div>
         </div>
       </div>
